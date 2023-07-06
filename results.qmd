@@ -1,0 +1,375 @@
+---
+title: "Paranormal Beliefs: Latent Class Analysis"
+author: "Šimon Kucharský & Ingmar Visser"
+format: pdf
+editor: source
+bibliography: citations.bib
+csl: apa.csl
+execute: 
+  echo: false
+---
+
+::: {.content-hidden unless-format="pdf"}
+```{=latex}
+\newcommand\logit{{\text{logit}}}
+\newcommand\ilogit{{\text{logit}^{-1}}}
+```
+:::
+
+```{r}
+ggplot2::theme_set(ggplot2::theme_classic(base_size = 15))
+
+```
+# Questions
+
+> (1) Does the current dataset provide support for 4 factor structure identified in the 1985 study (based on items 1-24 of the paranormal beliefs scale)?
+
+In principle, we cannot say for sure. Latent Class Analysis (LCA) searches for clusters of *respondents* that have something in common, whereas factors are clusters of *items* that have something in common. As such, LCA is not suitable to provide evidence for a factor structure of a questionnaire, as it answers a completely orthogonal question to that [*cf*. @oberski2016mixture].
+
+That said, we found some evidence that informing the LCA model with constraints that allow grouping the items into clusters based on the original CFA factors improves the fit of the model and finds additional groups of participants in the data. As such it is plausible that a 4-factor model would fit the data, even though it is likely that the factors would be highly correlated, raising a question whether it is practical to distinguish between the four factors.
+
+> (2) What is the most important conclusion/finding based on these data and the application of technique Latent Class Analysis?
+
+About a half (47%, 95%CI[45%, 49%]) of the Dutch population are extremely skeptical towards any kind of paranormal phenomena, uniformly across all item types. About a quarter of the population (25%, 95%CI[23%, 28%]) are less skeptical towards any and all paranormal phenomena. About a tenth of the population (10%, 95CI[8%, 11%]) are extremely skeptical towards everyday superstitions, but less skeptical towards other types of paranormal phenomena.
+
+# Model details
+
+We used Latent Class models for the analysis. Response $y_{pi}$ of participant $p \in \{1, ..., P\}$ with a survey weight $w_p$ on item $i \in \{1, ..., 24\}$ is modeled as a mixture of $G \in \mathbb{Z}^+$ classes with mixture proportions $\pi \in \mathbb{R}^G$; $0 < \pi_g < 1$, $\sum_{g=1}^G \pi_g = 1$, resulting in the following general likelihood:
+
+$$
+\mathcal{L}(y | \pi, \theta) = \prod_p \left(\sum_g \pi_g \prod_i p(y_{pi} | \theta_{gi})\right)^{w_p},
+$$
+
+As the response scale for all items was a 5-point Likert scale, we used the Ordinal Logistic likelihood to model the data. Specifically, with $K = 5$ response categories, we have cutpoints $c \in \mathbb{R}^{4}$ such that $c_i < c_{i+1}$ for $i \in \{1,2,3\}$ and that $\sum_i^4 c_i = 0$, and we have the latent agreement with the item  $\eta \in \mathbb{R}$, then the observed response $k \in \{1, 2, 3, 4, 5\}$ is modelled by
+
+$$
+p(y = k \mid c, \eta) = \left\{
+\begin{array}{ll}
+      1 - \ilogit(\eta - c_1) & \text{if}~k = 1 \\
+      \ilogit(\eta - c_{k-1}) - \ilogit(\eta - c_{k}) & \text{if}~1 < k < 5 \text{, and}\\
+      \ilogit(\eta - c_5) & \text{if}~k = 5 \\
+\end{array} 
+\right. 
+$$
+
+We will use the probability sampling statements to allow easy navigation between the models. Specifically, we use the following notation to express that the data follow the ordered logistic distribution, and that the parameters of the ordered logistic distribution depend on the latent class $z_p$ to which a participants $p$ belongs to:
+
+$$
+\begin{aligned}
+y_{pi} & \sim \text{OrderedLogistic}(\eta_{z_pi}, c_i) \\
+z_{p} & \sim \text{Categorical}(\pi),
+\end{aligned}
+$$
+
+
+Note that in all models we let the cutpoints $c$ estimate freely for each item (as long as they satisfied the sum to zero constraint: $\sum_i^4 c_i = 1$), assuming that each item has different "difficulty". However, the cutpoints were set equal between all classes within each item, assuming that the latent classes do not differ in terms of item functioning. This way the latent class components are distinguished only by the values of $\eta$. 
+
+Different models were defined by 1) varying the number of latent classes, and 2) imposing equality constraints on $\eta$ parameters between items.
+
+## Uninformed models
+
+As a baseline, we considered models that are not informed by the original CFA results.
+
+### Constrained model
+
+The baseline model is such that
+
+$$
+\begin{aligned}
+y_{pi} &\sim \text{OrdinalLogistic}(\eta_{z_p}, c_i) \\
+z_p &\sim \text{Categorical}(\pi),
+\end{aligned}
+$$
+the parameter $\eta$ is fixed equal across all items within each class, see @fig-constrained-illustration for an example.
+
+```{r}
+#| label: fig-constrained-illustration
+#| fig-cap: Illustration of the constrained model with 2 classes. Each class is assigned a separate level of $\eta$ value that is held constrant across all items.
+df <- tidyr::expand_grid(item = 1:8, class = factor(1:2))
+df$eta <- ifelse(df$class == 1, 0.5, -1)
+
+ggplot2::ggplot(df, ggplot2::aes(x = item,  y = eta, group = class, col = class)) +
+  ggplot2::geom_line() +
+  ggplot2::scale_y_continuous(limits = c(-1.5, 1.5)) +
+  ggplot2::ylab(expression(eta)) +
+  ggplot2::xlab("Item") +
+  ggthemes::scale_color_colorblind(name = "Class")
+```
+
+### Unconstrained model
+
+The unconstrained model estimates the $\eta$ parameters freely per item:
+
+$$
+\begin{aligned}
+y_{pi} &\sim \text{OrdinalLogistic}(\eta_{z_pi}, c_i) \\
+z_p &\sim \text{Categorical}(\pi),
+\end{aligned}
+$$
+the parameter $\eta$ is set free across items and for each class, see @fig-unconstrained-illustration for an example.
+
+
+```{r}
+#| label: fig-unconstrained-illustration
+#| fig-cap: Illustration of the unconstrained model with 2 classes. Each class and item is assigned a separate level of $\eta$ value.
+set.seed(1)
+df <- tidyr::expand_grid(item = 1:8, class = factor(1:2))
+df$eta <- ifelse(df$class == 1, rnorm(8, 0.5, 0.3), rnorm(8, -1, 0.1))
+
+ggplot2::ggplot(df, ggplot2::aes(x = item,  y = eta, group = class, col = class)) +
+  ggplot2::geom_line() +
+  ggplot2::scale_y_continuous(limits = c(-1.5, 1.5)) +
+  ggplot2::ylab(expression(eta)) +
+  ggplot2::xlab("Item") +
+  ggthemes::scale_color_colorblind(name = "Class")
+```
+
+## Models informed by the original CFA
+
+Next to the mixture models defined above, we also fitted models that are informed by the original CFA results. Specifically, we constrain the parameters $\eta$ for items that belong to one of the four factors identified by the original CFA results. The general idea is that each item is modeled by two $\eta$ parameters, corresponding to "low" and high "belief" in the statement. Correspondingly, this allows us to specify all combinations of "low" and "high" belief in any of the four factors, resulting in $2^4=16$ latent classes - representing all combinations of beliefs in individual factors:
+
+```{r}
+
+classes <- tidyr::expand_grid(
+  `Extraordinary human abilities` = c("low", "high"),
+  `Supernatural reality`          = c("low", "high"),
+  `Unearthly beings`              = c("low", "high"), 
+  `Everyday superstition`         = c("low", "high"))
+classes$Class <- 1:16
+classes <- classes[, c(5, 1:4)]
+knitr::kable(classes)
+```
+
+```{r}
+source("item-dictionary.R")
+item_dictionary <- item_dictionary[1:24,]
+knitr::kable(item_dictionary[, c("item", "label", "factor")] |> dplyr::arrange(factor), col.names = c("Item", "Label", "Factor"))
+```
+
+### Constrained
+
+The most constrained model is such that we estimate only two values of $\eta_{\text{low}}$, $\eta_{\text{high}}$, holding the values fixed across classes and items.
+
+$$
+\begin{aligned}
+y_{pi} &\sim \text{OrdinalLogistic}(\eta_{q_{pi}}, c_i) \\
+q_{pi} &= \left\{
+\begin{array}{ll}
+      \text{low} & \text{if}~k = 1 \\
+      \text{high} & \text{if}~1 < k < 5 \text{, and}\\
+\end{array} 
+\right. \\
+z_p &\sim \text{Categorical}(\pi),
+\end{aligned}
+$$
+This model is equivalent to the Constrained model of two classes from the previous section in terms of the structure of estimated parameters $\eta$ and $c$; however, it adds flexibility in allowing to cluster participants into 16 groups instead of 2, see @fig-constrained-cfa-illustration.
+
+```{r}
+#| label: fig-constrained-cfa-illustration
+#| fig-cap: Illustration of the CFA-constrained model. For each item two levels of $\eta$ values are estimated - these values are fixed equal across items. Each class represents a combination of "factors"; Class 1 is fixed on the low level for all items, Class 2 is fixed on the low level for items in factor 1 but on high level for items in factor 2, etc.
+#| fig-height: 4.5
+eta <- c(-1, 0.5)
+df <- tidyr::expand_grid(class = 1:4, item = 1:6)
+df$factor <- ifelse(df$item <= 3, "Factor 1", "Factor 2")
+df$class <- sprintf("Class %s", df$class)
+df$eta <- eta[c(1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 2, 2, 2, 2, 2)]
+ggplot2::ggplot(df, ggplot2::aes(x = item, y = eta)) +
+  ggplot2::geom_line() +
+  ggplot2::scale_y_continuous(name = expression(eta), limits = c(-1.5, 1.5)) +
+  ggplot2::scale_x_continuous(name = "Item", breaks = 1:6) +
+  ggplot2::facet_grid(class~factor, scales = "free_x")
+```
+
+### Semi-constrained
+
+In a semi-constrained model we let $\eta_{\text{low}}$, $\eta_{\text{high}}$ also vary between factors, but holding them fixed across items within a factor. 
+
+```{r}
+#| label: fig-semi-constrained-cfa-illustration
+#| fig-cap: Illustration of the CFA-semi-constrained model. For each item two levels of $\eta$ values are estimated - these values are fixed equal across items within a factor but vary between factors. Each class represents a combination of "factors"; Class 1 is fixed on the low level for all items, Class 2 is fixed on the low level for items in factor 1 but on high level for items in factor 2, etc.
+#| fig-height: 4.5
+df <- tidyr::expand_grid(class = 1:4, item = 1:6)
+df$factor <- ifelse(df$item <= 3, "Factor 1", "Factor 2")
+df$class <- sprintf("Class %s", df$class)
+df$eta <- c(-1, -1, -1, -0.5, -0.5, -0.5, -1, -1, -1, 1, 1, 1, 0.5, 0.5, 0.5, -0.5, -0.5, -0.5, 0.5, 0.5, 0.5, 1, 1, 1)
+ggplot2::ggplot(df, ggplot2::aes(x = item, y = eta)) +
+  ggplot2::geom_line() +
+  ggplot2::scale_y_continuous(name = expression(eta), limits = c(-1.5, 1.5)) +
+  ggplot2::scale_x_continuous(name = "Item", breaks = 1:6) +
+  ggplot2::facet_grid(class~factor, scales = "free_x")
+```
+
+
+### Unconstrained
+
+In an unconstrained model we let $\eta_{\text{low}}$, $\eta_{\text{high}}$ vary between all items.
+
+This model is equivalent to the Unconstrained model of two classes from the previous section in terms of the structure of estimated parameters $\eta$ and $c$; however, it adds flexibility in allowing to cluster participants into 16 groups instead of 2. See @fig-unconstrained-cfa-illustration for an example.
+
+```{r}
+#| label: fig-unconstrained-cfa-illustration
+#| fig-cap: Illustration of the CFA-unconstrained model. For each item two levels of $\eta$ values are estimated - these values vary between items. Each class represents a combination of "factors"; Class 1 is fixed on the low level for all items, Class 2 is fixed on the low level for items in factor 1 but on high level for items in factor 2, etc.
+#| fig-height: 4.5
+df <- tidyr::expand_grid(class = 1:4, item = 1:6)
+df$factor <- ifelse(df$item <= 3, "Factor 1", "Factor 2")
+df$class <- sprintf("Class %s", df$class)
+df$eta <- eta[c(1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 2, 2, 2, 2, 2)]
+set.seed(1)
+eta <- c(rep(-1, 6), rep(0.5, 6))
+eta <- rnorm(12, eta, sd = 1)
+df$eta <- eta[c(1:6, 1:3, 4:6 + 6, 1:3 + 6, 4:6, 7:12)]
+ggplot2::ggplot(df, ggplot2::aes(x = item, y = eta)) +
+  ggplot2::geom_line() +
+  ggplot2::scale_y_continuous(name = expression(eta)) +
+  ggplot2::scale_x_continuous(name = "Item", breaks = 1:6) +
+  ggplot2::facet_grid(class~factor, scales = "free_x")
+```
+
+
+# Results 
+
+We fitted all models using maximum likelihood estimation using Stan.
+
+## Model comparison
+
+We considered the following models in the main model comparison:
+
+```{r}
+#| label: tbl-model-comparison
+#| tbl-cap: Overview of the models fitted to the data.
+models <- readRDS(here::here("models", "model-comparison.Rds"))
+knitr::kable(
+  models[, c("type", "name", "pi", "eta", "c", "npar", "logLik", "aic", "bic")],
+  col.names = c("Type", "Variant", "dim($\\pi$)", "dim($\\eta$)", "dim(c)", "n(par)", "Log-likelihood", "AIC", "BIC"), 
+  booktabs = TRUE, 
+  linesep = "", 
+  escape = FALSE, 
+  align = c("l", "l", "r", "r", "r", "r", "r", "r", "r")
+  ) |>
+  kableExtra::kable_styling(font_size = 8, protect_latex = FALSE)
+```
+
+![Model comparison of the seven models under consideration.](figures/model-comparison.eps){width=100% #fig-model-comparison}
+
+As shown in @tbl-model-comparison and @fig-model-comparison, both AIC and BIC overwhelmingly supported the unconstrained CFA model, followed by the uninformed unconstrained model with two classes, the semi-constrained CFA model, and the constrained CFA model.
+
+
+These results suggest the following:
+
+1. There is a substantial variability between items which is not captured properly if we constrain $\eta$ across items. 
+2. Allowing the model to classify participants into 16 groups instead of 2, while only allowing "low"/"high" responses on each item substantially improves fit to the data; this suggests that there are subgroups that score high on items associated with one factor but low on items associated with other factor(s).
+
+
+## Results from the best model
+
+In this section we interpret the results from the best fitting model (unconstrained model informed by the CFA).
+
+@fig-marginal-probs shows that model captures the observed response distribution (both observed proportions as well as proportions weighted by the survey weights) well on all items; there are no visible patterns of misfit.
+
+![Estimates of the marginal response probability for each item](figures/cfa-unconstrained/marginal-probs.eps){width=100% #fig-marginal-probs}
+
+@fig-eta-cutpoints and @fig-eta-grouped show the estimated parameters $\eta$ and $c$ for each item. @fig-eta-cutpoints shows that whereas there is relatively low variability between items with respect to the cutpoints $c$, there is a large variability between items with respect to $\eta$; this might suggest that some items are in general more believable than others for the entire population. @fig-eta-grouped shows the $\eta$ parameters grouped based on which factor an item belongs to (based on the original CFA results). Notably, items 20-22 associated with "Everyday superstitions" ("Lucky numbers", "Unlucky numbers", and "Walking under a ladder") are found on average less believable in contrast to other items. Further, the item 16 - "Gnomes and elves" is also rated with considerable skepticism across the whole sample. These observations are also apparent when inspecting the observed response distributions in @fig-marginal-probs.
+
+There results suggest that the interpretation of the "low" and "high" values of $\eta$ is not straightforward: If a person is classified into a group that scores "low" on some group of items, it does not necessarily mean they are complete skeptics, and on the other hand scoring "high" does not automatically mean they have a high confidence in their belief. In particular, since the cutpoints $c$ are centered around zero, values of $\eta$ around zero may correspond to a whole range of responses centered around the neutral "Maybe" response category. As @fig-eta-cutpoints shows even "high" $\eta$ values range somewhere between -2 and 0.5, suggesting that being classified into a group that scores "high" on a particular item does not necessarily correspond to believing in the statement uncritically.
+
+![Estimates of the parameter $\eta$ and the cutpoints for each item.](figures/cfa-unconstrained/eta-cutpoints.eps){width=100% #fig-eta-cutpoints}
+
+![Estimates of the parameter $\eta$ for each item - grouped by the factors.](figures/cfa-unconstrained/eta-grouped.eps){width=100% #fig-eta-grouped}
+
+
+More concretely, @fig-probs shows the actual response probabilities under the "low" and "high" values of $\eta$, for each item separately. Whereas "low" level of belief ($\eta$) leads to generally majority of responses in the "Definitely not"/"Probably not" categories, the "high" levels of $\eta$ leads to a range of responses, most commonly ranging between "Probably not"/"Maybe"/"Probably". As such, we cannot associate "high" values of $\eta$ with high beliefs in the item, although we can perhaps associate "low" values of $\eta$ with a skeptical view towards the item.
+
+![Estimates of the response probabilities under low/high $\eta$ for each item.](figures/cfa-unconstrained/probs.eps){width=100% #fig-probs}
+
+Table 4 shows the estimated proportions of the 16 classes in the population and the counts of the number of participants in the sample classified into the class using the maximum aposteriori principle; The observed counts are not exactly proportional to the estimated proportions because the model was weighted by the survey weights. The largest group of participants (47%, 95%CI [45%, 49%]) is skeptical towards all items in the questionnaire, followed by a smaller group of "believers" (27%, 95%CI [23%, 28%]) who are not particularly skeptical to any items in the questionnaire. There also appears to be a group of participants (10%, 95%CI [8%, 11%]) that shows relatively low levels of skepticism for items about extraordinary human abilities, supernatural reality, or unearthly beings, but still being relatively skeptical about everyday superstitions, followed by a smaller group still (4%, 95%CI [3%, 5%]) of respondents who are not particularly skeptical towards extraordinary human abilities and supernatural reality, but are relatively skeptical about unearthly beings and everyday superstitions. 
+
+The rest of the classes are relatively minor and amount to single percentage points from the total population.
+
+
+Finally, Table 5 shows the estimated proportions of the population that are not entirely skeptical towards the four groups (~ factors) of items; around 40-50% of the population are not skeptical towards extraordinary human abilities, supernatural reality, or unearthly beings. About a thirds of the population is not entirely skeptical towards everyday superstitions.
+
+
+```{=latex}
+\begin{table}
+\caption{Proportions of the 16 classes estimated by the model.}
+\label{tab:class-props}
+\centering
+\begin{tabular}[t]{lrrrr}
+\toprule
+\multicolumn{2}{c}{ } & \multicolumn{2}{c}{95\% CI} & \multicolumn{1}{c}{ } \\
+\cmidrule(l{3pt}r{3pt}){3-4}
+Class & Proportion & Lower & Upper & Count\\
+\midrule
+``Skeptics'' & 0.47 & 0.45 & 0.49 & 1302\\
+``Believers'' & 0.26 & 0.23 & 0.28 & 668\\
+EHA + SR + UB & 0.10 & 0.08 & 0.11 & 212\\
+EHA + SR & 0.04 & 0.03 & 0.05 & 145\\
+UB & 0.02 & 0.02 & 0.03 & 41\\
+EHA & 0.02 & 0.01 & 0.03 & 66\\
+ES & 0.02 & 0.01 & 0.03 & 54\\
+EHA + ES & 0.01 & 0.01 & 0.02 & 27\\
+EHA + UB & 0.01 & 0.01 & 0.02 & 25\\
+SR + UB + ES & 0.01 & 0.00 & 0.02 & 5\\
+EHA + SR + ES & 0.01 & 0.00 & 0.02 & 21\\
+SR + UB & 0.01 & 0.00 & 0.01 & 11\\
+SR & 0.01 & 0.00 & 0.01 & 15\\
+SR + ES & 0.00 & 0.00 & 0.01 & 9\\
+ES + UB & 0.00 & 0.00 & 0.01 & 7\\
+EHA + UB + ES & 0.00 & 0.00 & 0.03 & 0\\
+\bottomrule
+\multicolumn{5}{l}{\textsuperscript{*} EHA - Belief in extraordinary human abilities;}\\
+\multicolumn{5}{l}{SR - Belief in supernatural reality;}\\
+\multicolumn{5}{l}{UB - Belief in unearthly beings;}\\
+\multicolumn{5}{l}{ES - Belief in everyday superstition.}
+\end{tabular}
+\end{table}
+```
+
+
+```{=latex}
+
+\begin{table}
+\caption{Proportion of people who are not entirely sceptical towards one of the four groups of items. }
+\centering
+\begin{tabular}[t]{lrrr}
+\toprule
+\multicolumn{2}{c}{ } & \multicolumn{2}{c}{95\% CI} \\
+\cmidrule(l{3pt}r{3pt}){3-4}
+Factor & Proportion & Lower & Upper\\
+\midrule
+Extraordinary human abilities & 0.45 & 0.42 & 0.47\\
+Supernatural reality & 0.44 & 0.40 & 0.45\\
+Unearthly beings & 0.41 & 0.39 & 0.43\\
+Everyday superstition & 0.32 & 0.30 & 0.34\\
+\bottomrule
+\end{tabular}
+\end{table}
+```
+
+
+## Exploratory analysis
+
+As an exploratory analysis, we also fitted the unconstrained mixture or ordered logistic items with the number of classes ranging between 1 and 16. This analysis serves as a check of whether the observed patterns found using the constrained models can be also recovered if the models are uninformed by the results of the original factor analysis. Models with nine and more classes failed to converge to the same optimum, suggesting that the results are dependent on the starting values. As such, we omit the results of models 9-16 from this analysis as we do not have a high confidence that we found a global optimum.
+
+@fig-expl-eta-overview shows the estimated $\eta$ parameters under each of the unconstrained models. It is apparent that models with 1-5 classes resulted in *parallel* classes across items, suggesting that these classes differ in terms of the overall belief in paranormal phenomena but there is little variation across different item types.
+
+@fig-expl-grouped-6 shows the estimated parameters $\eta$ under the 6-class model, and reveals that the class 3 is the only one that crosses with the others between items. Averaging the estimates within the factor items groups results in @fig-expl-averaged-6 and shows that class 3 in this model corresponds to the group of participants that are on average not that skeptical towards paranormal phenomena, except for everyday superstitions; cross-classification with the CFA-constrained model revealed that about 50% of cases that classified in this class are also classified in the EHA + SR + UB class in the CFA-constrained model, with the rest classified in the EHA +SR class, EHA + UB class, UB class, EHA class, and some in ``Believers'' class. Although the overlap is not perfect, this class thus maps onto the third largest EHA + SR + UB class found using the constrained model.
+
+![Estimates of the parameter $\eta$ for each item, class, under the 8 unconstrained models that converged.](figures/exploratory/eta-overview.eps){width=100% #fig-expl-eta-overview}
+
+![Estimates of the parameter $\eta$ for each item, class, under 6-class unconstrained model, grouped into the items factor groups.](figures/exploratory/eta-grouped-6.eps){width=100% #fig-expl-grouped-6}
+
+![Average $\eta$ per item factor group for each class under the 6-class model.](figures/exploratory/eta-averaged-6.eps){width=100% #fig-expl-averaged-6}
+
+@fig-expl-averaged-8 shows the averaged estimates of $\eta$ within the four item factor groups from the 8-class unconstrained model (which was favored by both AIC and BIC out of all models). However, this model did not uncover any additional subgroup patterns and more or less adds additional *parallel* classes. Thus, there uncovering additional subgroup patterns using the unconstrained models were unsuccessful. 
+
+![Average $\eta$ per item factor group for each class under the 6-class model.](figures/exploratory/eta-averaged-8.eps){width=100% #fig-expl-averaged-8}
+
+The results of the exploratory analysis suggest that more than "Skeptics" and "Believers", there are people who more or less belief in paranormal activities across all items (as suggested by recovering parallel classes). The only exception is the group of participants that are skeptical towards everyday superstitions but not so skeptical towards other types of paranormal phenomena.
+
+Taken together, it is possible that the 4-factor model would fit the data; however, it is quite likely that the factors are highly correlated and it remains a question if it is practical to distinguish between the item types, perhaps with the exception of everyday superstitions.
+
+### References
+
+::: {#refs}
+:::
