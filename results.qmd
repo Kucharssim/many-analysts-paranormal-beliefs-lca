@@ -22,19 +22,19 @@ ggplot2::theme_set(ggplot2::theme_classic(base_size = 15))
 ```
 # Questions
 
-> (1) Does the current dataset provide support for 4 factor structure identified in the 1985 study (based on items 1-24 of the paranormal beliefs scale)?
+> (1) Does the current dataset provide support for a 4-factor structure identified in the 1985 study (based on items 1-24 of the paranormal beliefs scale)?
 
 In principle, we cannot say for sure. Latent Class Analysis (LCA) searches for clusters of *respondents* that have something in common, whereas factors are clusters of *items* that have something in common. As such, LCA is not suitable to provide evidence for a factor structure of a questionnaire, as it answers a completely orthogonal question to that [*cf*. @oberski2016mixture].
 
-That said, we found some evidence that informing the LCA model with constraints that allow grouping the items into clusters based on the original CFA factors improves the fit of the model and finds additional groups of participants in the data. As such it is plausible that a 4-factor model would fit the data, even though it is likely that the factors would be highly correlated, raising a question whether it is practical to distinguish between the four factors.
+That said, we found some evidence that informing the LCA model with constraints that allow grouping the items into clusters based on the original CFA factors improves the fit of the model and finds additional groups of participants in the data *(Can you say some more about these groups here?)*. As such it is plausible that a 4-factor model would fit the data, even though it is likely that the factors would be highly correlated, raising the question of whether it is practical to distinguish between the four factors in the first place. *In fact, the interest in these data may lie more in the possibility to distinguish groups of people with various levels of skepticism, than in determining the commonalities between items.*
 
 > (2) What is the most important conclusion/finding based on these data and the application of technique Latent Class Analysis?
 
-About a half (47%, 95%CI[45%, 49%]) of the Dutch population are extremely skeptical towards any kind of paranormal phenomena, uniformly across all item types. About a quarter of the population (25%, 95%CI[23%, 28%]) are less skeptical towards any and all paranormal phenomena. About a tenth of the population (10%, 95CI[8%, 11%]) are extremely skeptical towards everyday superstitions, but less skeptical towards other types of paranormal phenomena.
+About half (47%, 95%CI[45%, 49%]) of the Dutch population *(use half of the sample instead?)* are extremely skeptical towards any kind of paranormal phenomena, uniformly across all item types. About a quarter of the population (25%, 95%CI[23%, 28%]) are less skeptical towards any and all paranormal phenomena. About a tenth of the population (10%, 95CI[8%, 11%]) are extremely skeptical towards everyday superstitions, but less skeptical towards other types of paranormal phenomena.
 
 # Model details
 
-We used Latent Class models for the analysis. Response $y_{pi}$ of participant $p \in \{1, ..., P\}$ with a survey weight $w_p$ on item $i \in \{1, ..., 24\}$ is modeled as a mixture of $G \in \mathbb{Z}^+$ classes with mixture proportions $\pi \in \mathbb{R}^G$; $0 < \pi_g < 1$, $\sum_{g=1}^G \pi_g = 1$, resulting in the following general likelihood:
+We used Latent Class models for the analysis. Response $y_{pi}$ of participant $p \in \{1, ..., P\}$ with a survey weight $w_p$ *(is it clear from context what this is?)* on item $i \in \{1, ..., 24\}$ is modeled as a mixture of $G \in \mathbb{Z}^+$ classes with mixture proportions $\pi \in \mathbb{R}^G$; $0 < \pi_g < 1$, $\sum_{g=1}^G \pi_g = 1$, resulting in the following general likelihood:
 
 $$
 \mathcal{L}(y | \pi, \theta) = \prod_p \left(\sum_g \pi_g \prod_i p(y_{pi} | \theta_{gi})\right)^{w_p},
@@ -62,7 +62,7 @@ z_{p} & \sim \text{Categorical}(\pi),
 $$
 
 
-Note that in all models we let the cutpoints $c$ estimate freely for each item (as long as they satisfied the sum to zero constraint: $\sum_i^4 c_i = 1$), assuming that each item has different "difficulty". However, the cutpoints were set equal between all classes within each item, assuming that the latent classes do not differ in terms of item functioning. This way the latent class components are distinguished only by the values of $\eta$. 
+Note that in all models we let the cutpoints $c$ estimate freely for each item (as long as they satisfied the sum to zero constraint: $\sum_i^4 c_i = 1$), assuming that each item has different "difficulty". However, the cutpoints were set equal between all classes within each item, assuming that the latent classes do not differ in terms of item functioning *can this be seen as a form of measurement invariance across classes?*. This way the latent class components are distinguished only by the values of $\eta$. 
 
 Different models were defined by 1) varying the number of latent classes, and 2) imposing equality constraints on $\eta$ parameters between items.
 
@@ -80,7 +80,7 @@ y_{pi} &\sim \text{OrdinalLogistic}(\eta_{z_p}, c_i) \\
 z_p &\sim \text{Categorical}(\pi),
 \end{aligned}
 $$
-the parameter $\eta$ is fixed equal across all items within each class, see @fig-constrained-illustration for an example.
+the parameter $\eta$ is fixed equal across all items within each class *what does this mean? equal 'difficulty'?*, see @fig-constrained-illustration for an example.
 
 ```{r}
 #| label: fig-constrained-illustration
