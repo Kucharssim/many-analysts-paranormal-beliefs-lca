@@ -26,15 +26,15 @@ ggplot2::theme_set(ggplot2::theme_classic(base_size = 15))
 
 In principle, we cannot say for sure. Latent Class Analysis (LCA) searches for clusters of *respondents* that have something in common, whereas factors are clusters of *items* that have something in common. As such, LCA is not suitable to provide evidence for a factor structure of a questionnaire, as it answers a completely orthogonal question to that [*cf*. @oberski2016mixture].
 
-That said, we found some evidence that informing the LCA model with constraints that allow grouping the items into clusters based on the original CFA factors improves the fit of the model and finds additional groups of participants in the data *(Can you say some more about these groups here?)*. As such it is plausible that a 4-factor model would fit the data, even though it is likely that the factors would be highly correlated, raising the question of whether it is practical to distinguish between the four factors in the first place. *In fact, the interest in these data may lie more in the possibility to distinguish groups of people with various levels of skepticism, than in determining the commonalities between items.*
+That said, we found some evidence that informing the LCA model with constraints that allow grouping the items into clusters based on the original CFA factors improves the fit of the model and finds additional groups of participants in the data; most prominently, a group of participants that are relatively skeptical towards everyday superstitions but less skeptical towards other types of paranormal phenomena. As such it is plausible that a 4-factor model would fit the data, even though it is likely that the factors would be highly correlated, raising the question of whether it is practical to distinguish between the four factors in the first place. In fact, the interest in these data may lie more in the possibility to distinguish groups of people with various levels of skepticism, than in determining the commonalities between items.
 
 > (2) What is the most important conclusion/finding based on these data and the application of technique Latent Class Analysis?
 
-About half (47%, 95%CI[45%, 49%]) of the Dutch population *(use half of the sample instead?)* are extremely skeptical towards any kind of paranormal phenomena, uniformly across all item types. About a quarter of the population (25%, 95%CI[23%, 28%]) are less skeptical towards any and all paranormal phenomena. About a tenth of the population (10%, 95CI[8%, 11%]) are extremely skeptical towards everyday superstitions, but less skeptical towards other types of paranormal phenomena.
+About half (47%, 95%CI[45%, 49%]) of the population are extremely skeptical towards any kind of paranormal phenomena, uniformly across all item types. About a quarter of the population (25%, 95%CI[23%, 28%]) are less skeptical towards any and all paranormal phenomena. About a tenth of the population (10%, 95CI[8%, 11%]) are extremely skeptical towards everyday superstitions, but less skeptical towards other types of paranormal phenomena.
 
 # Model details
 
-We used Latent Class models for the analysis. Response $y_{pi}$ of participant $p \in \{1, ..., P\}$ with a survey weight $w_p$ *(is it clear from context what this is?)* on item $i \in \{1, ..., 24\}$ is modeled as a mixture of $G \in \mathbb{Z}^+$ classes with mixture proportions $\pi \in \mathbb{R}^G$; $0 < \pi_g < 1$, $\sum_{g=1}^G \pi_g = 1$, resulting in the following general likelihood:
+We used Latent Class models for the analysis. Response $y_{pi}$ of participant $p \in \{1, ..., P\}$ with a survey weight $w_p$ on item $i \in \{1, ..., 24\}$ is modeled as a mixture of $G \in \mathbb{Z}^+$ classes with mixture proportions $\pi \in \mathbb{R}^G$; $0 < \pi_g < 1$, $\sum_{g=1}^G \pi_g = 1$, resulting in the following general likelihood:
 
 $$
 \mathcal{L}(y | \pi, \theta) = \prod_p \left(\sum_g \pi_g \prod_i p(y_{pi} | \theta_{gi})\right)^{w_p},
@@ -62,7 +62,7 @@ z_{p} & \sim \text{Categorical}(\pi),
 $$
 
 
-Note that in all models we let the cutpoints $c$ estimate freely for each item (as long as they satisfied the sum to zero constraint: $\sum_i^4 c_i = 1$), assuming that each item has different "difficulty". However, the cutpoints were set equal between all classes within each item, assuming that the latent classes do not differ in terms of item functioning *can this be seen as a form of measurement invariance across classes?*. This way the latent class components are distinguished only by the values of $\eta$. 
+Note that in all models we let the cutpoints $c$ estimate freely for each item (as long as they satisfied the sum to zero constraint: $\sum_i^4 c_i = 1$), assuming that each item has different "difficulty". However, the cutpoints were set equal between all classes within each item, assuming that the latent classes do not differ in terms of item functioning; in other words this is akin to assuming measurement invariance of the individual items between classes. This way the latent class components are distinguished only by the values of $\eta$. 
 
 Different models were defined by 1) varying the number of latent classes, and 2) imposing equality constraints on $\eta$ parameters between items.
 
@@ -80,7 +80,7 @@ y_{pi} &\sim \text{OrdinalLogistic}(\eta_{z_p}, c_i) \\
 z_p &\sim \text{Categorical}(\pi),
 \end{aligned}
 $$
-the parameter $\eta$ is fixed equal across all items within each class *what does this mean? equal 'difficulty'?*, see @fig-constrained-illustration for an example.
+the parameter $\eta$ is fixed equal across all items within each class, representing a constant belief in paranormal phenoment across all items, see @fig-constrained-illustration for an example.
 
 ```{r}
 #| label: fig-constrained-illustration
@@ -228,7 +228,11 @@ ggplot2::ggplot(df, ggplot2::aes(x = item, y = eta)) +
 
 # Results 
 
-We fitted all models using maximum likelihood estimation using Stan.
+The main analysis consisted of fitting the constrained model with one and two classes, the unconstrained model with one and two classes, and the three CFA-informed models (constrained, semi-constrained, and unconstrained), and selecting the best model based on AIC/BIC for interpretation.
+
+An exploratory analysis consisted of fitting the unconstrained model with varying numbers of classes to potentially uncover patterns in the data not captured by the main analysis, and provides a robustness check for the conclusions made during the main analysis.
+
+We fitted all models using maximum likelihood estimation using Stan [@carpenter2017stan]. Where applicable, we show 95% confidence intervals.
 
 ## Model comparison
 
@@ -270,11 +274,11 @@ In this section we interpret the results from the best fitting model (unconstrai
 
 @fig-eta-cutpoints and @fig-eta-grouped show the estimated parameters $\eta$ and $c$ for each item. @fig-eta-cutpoints shows that whereas there is relatively low variability between items with respect to the cutpoints $c$, there is a large variability between items with respect to $\eta$; this might suggest that some items are in general more believable than others for the entire population. @fig-eta-grouped shows the $\eta$ parameters grouped based on which factor an item belongs to (based on the original CFA results). Notably, items 20-22 associated with "Everyday superstitions" ("Lucky numbers", "Unlucky numbers", and "Walking under a ladder") are found on average less believable in contrast to other items. Further, the item 16 - "Gnomes and elves" is also rated with considerable skepticism across the whole sample. These observations are also apparent when inspecting the observed response distributions in @fig-marginal-probs.
 
-There results suggest that the interpretation of the "low" and "high" values of $\eta$ is not straightforward: If a person is classified into a group that scores "low" on some group of items, it does not necessarily mean they are complete skeptics, and on the other hand scoring "high" does not automatically mean they have a high confidence in their belief. In particular, since the cutpoints $c$ are centered around zero, values of $\eta$ around zero may correspond to a whole range of responses centered around the neutral "Maybe" response category. As @fig-eta-cutpoints shows even "high" $\eta$ values range somewhere between -2 and 0.5, suggesting that being classified into a group that scores "high" on a particular item does not necessarily correspond to believing in the statement uncritically.
+These results suggest that the interpretation of the "low" and "high" values of $\eta$ is not straightforward: If a person is classified into a group that scores "low" on some group of items, it does not necessarily mean they are complete skeptics, and on the other hand scoring "high" does not automatically mean they have a high confidence in their belief. In particular, since the cutpoints $c$ are centered around zero, values of $\eta$ around zero may correspond to a whole range of responses centered around the neutral "Maybe" response category. As @fig-eta-cutpoints shows even "high" $\eta$ values range somewhere between -2 and 0.5, suggesting that being classified into a group that scores "high" on a particular item does not necessarily correspond to believing in the given statement uncritically.
 
 ![Estimates of the parameter $\eta$ and the cutpoints for each item.](figures/cfa-unconstrained/eta-cutpoints.eps){width=100% #fig-eta-cutpoints}
 
-![Estimates of the parameter $\eta$ for each item - grouped by the factors.](figures/cfa-unconstrained/eta-grouped.eps){width=100% #fig-eta-grouped}
+![Estimates of the parameter $\eta$ for each item - grouped by the factors from the original CFA results.](figures/cfa-unconstrained/eta-grouped.eps){width=100% #fig-eta-grouped}
 
 
 More concretely, @fig-probs shows the actual response probabilities under the "low" and "high" values of $\eta$, for each item separately. Whereas "low" level of belief ($\eta$) leads to generally majority of responses in the "Definitely not"/"Probably not" categories, the "high" levels of $\eta$ leads to a range of responses, most commonly ranging between "Probably not"/"Maybe"/"Probably". As such, we cannot associate "high" values of $\eta$ with high beliefs in the item, although we can perhaps associate "low" values of $\eta$ with a skeptical view towards the item.
@@ -349,11 +353,11 @@ Everyday superstition & 0.32 & 0.30 & 0.34\\
 
 ## Exploratory analysis
 
-As an exploratory analysis, we also fitted the unconstrained mixture or ordered logistic items with the number of classes ranging between 1 and 16. This analysis serves as a check of whether the observed patterns found using the constrained models can be also recovered if the models are uninformed by the results of the original factor analysis. Models with nine and more classes failed to converge to the same optimum, suggesting that the results are dependent on the starting values. As such, we omit the results of models 9-16 from this analysis as we do not have a high confidence that we found a global optimum.
+As an exploratory analysis, we also fitted the unconstrained mixture of ordered logistic items with the number of classes ranging between 1 and 16. This analysis serves as a check of whether the observed patterns found using the constrained models can be also recovered if the models are uninformed by the results of the original factor analysis. Models with nine and more classes failed to converge to the same optimum, suggesting that the results are dependent on the starting values. As such, we omit the results of models 9-16 from this analysis as we do not have a high confidence that we found a global optimum.
 
-@fig-expl-eta-overview shows the estimated $\eta$ parameters under each of the unconstrained models. It is apparent that models with 1-5 classes resulted in *parallel* classes across items, suggesting that these classes differ in terms of the overall belief in paranormal phenomena but there is little variation across different item types.
+@fig-expl-eta-overview shows the estimated $\eta$ parameters under each of the unconstrained models. It is apparent that models with 1-5 classes resulted in *parallel* classes across items, suggesting that these classes differ in terms of the overall belief in paranormal phenomena but there is relatively little (co-)variation across different item types.
 
-@fig-expl-grouped-6 shows the estimated parameters $\eta$ under the 6-class model, and reveals that the class 3 is the only one that crosses with the others between items. Averaging the estimates within the factor items groups results in @fig-expl-averaged-6 and shows that class 3 in this model corresponds to the group of participants that are on average not that skeptical towards paranormal phenomena, except for everyday superstitions; cross-classification with the CFA-constrained model revealed that about 50% of cases that classified in this class are also classified in the EHA + SR + UB class in the CFA-constrained model, with the rest classified in the EHA +SR class, EHA + UB class, UB class, EHA class, and some in ``Believers'' class. Although the overlap is not perfect, this class thus maps onto the third largest EHA + SR + UB class found using the constrained model.
+@fig-expl-grouped-6 shows the estimated parameters $\eta$ under the 6-class model, and reveals that the class 3 is the only one that crosses with the others between items. Averaging the estimates within the factor items groups results in @fig-expl-averaged-6 and shows that class 3 in this model corresponds to the group of participants that are on average not that skeptical towards paranormal phenomena, except for everyday superstitions; cross-classification with the CFA-constrained model revealed that about 50% of cases that classified in this class are also classified in the EHA + SR + UB class in the CFA-constrained model, with the rest classified in the EHA +SR class, EHA + UB class, UB class, EHA class, and some in "Believers" class. Although the overlap is not perfect, this class thus maps onto the third largest EHA + SR + UB class found using the constrained model.
 
 ![Estimates of the parameter $\eta$ for each item, class, under the 8 unconstrained models that converged.](figures/exploratory/eta-overview.eps){width=100% #fig-expl-eta-overview}
 
@@ -361,9 +365,9 @@ As an exploratory analysis, we also fitted the unconstrained mixture or ordered 
 
 ![Average $\eta$ per item factor group for each class under the 6-class model.](figures/exploratory/eta-averaged-6.eps){width=100% #fig-expl-averaged-6}
 
-@fig-expl-averaged-8 shows the averaged estimates of $\eta$ within the four item factor groups from the 8-class unconstrained model (which was favored by both AIC and BIC out of all models). However, this model did not uncover any additional subgroup patterns and more or less adds additional *parallel* classes. Thus, there uncovering additional subgroup patterns using the unconstrained models were unsuccessful. 
+@fig-expl-averaged-8 shows the averaged estimates of $\eta$ within the four item factor groups from the 8-class unconstrained model (which was favored by both AIC and BIC out of all models). However, this model did not uncover any additional subgroup patterns and more or less adds additional *parallel* classes. Thus, uncovering additional subgroup patterns using the unconstrained models was unsuccessful. 
 
-![Average $\eta$ per item factor group for each class under the 6-class model.](figures/exploratory/eta-averaged-8.eps){width=100% #fig-expl-averaged-8}
+![Average $\eta$ per item factor group for each class under the 8-class model.](figures/exploratory/eta-averaged-8.eps){width=100% #fig-expl-averaged-8}
 
 The results of the exploratory analysis suggest that more than "Skeptics" and "Believers", there are people who more or less belief in paranormal activities across all items (as suggested by recovering parallel classes). The only exception is the group of participants that are skeptical towards everyday superstitions but not so skeptical towards other types of paranormal phenomena.
 
